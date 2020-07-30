@@ -1,2 +1,2 @@
-# wxing2008666.github.io
-website for coding and thinking
+# website for coding and thinking
+keep coding, keep thinking
