@@ -43,7 +43,6 @@ int main()
     for (int i = 0; i < 10; ++i) {
         vt.emplace_back(func2, i);
     }
-
     ready = true;
 
     for (auto& t : vt)
