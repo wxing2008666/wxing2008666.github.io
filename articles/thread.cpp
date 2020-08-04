@@ -97,6 +97,7 @@ int main()
     for (auto& t : threads) {
         t.join();
     }
+
     t6.join();
     t7.join();
     t8.join();
@@ -105,3 +106,4 @@ int main()
     cout<<"count:"<<count<<endl;
     return 0;
 }
+
