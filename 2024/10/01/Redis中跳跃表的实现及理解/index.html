@@ -1,0 +1,676 @@
+
+
+<!DOCTYPE html>
+<html lang="en" data-default-color-scheme=auto>
+
+
+
+<head>
+  <meta charset="UTF-8">
+
+  <link rel="apple-touch-icon" sizes="76x76" href="/img/avatar.png">
+  <link rel="icon" href="/img/avatar.png">
+  
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  
+  <meta name="theme-color" content="#2f4154">
+  <meta name="author" content="wxing">
+  <meta name="keywords" content="">
+  
+    <meta name="description" content="跳跃表的主要特点包括 有序性：跳跃表中的元素是有序的，可以快速地进行范围查询。 概率性：跳跃表的高度是随机决定的，这使得它在平均情况下具有对数时间复杂度。 动态性：跳跃表可以在运行时动态地添加和删除元素，而不需要重新构建整个结构。 空间效率：相比于平衡树，跳跃表的空间效率更高，因为它不需要存储指向父节点的指针。  在 Redis 中，跳跃表被用于实现有序集合，它允许用户添加、删除、更新和查询元素，">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Redis中跳跃表的实现及理解">
+<meta property="og:url" content="http://example.com/2024/10/01/Redis%E4%B8%AD%E8%B7%B3%E8%B7%83%E8%A1%A8%E7%9A%84%E5%AE%9E%E7%8E%B0%E5%8F%8A%E7%90%86%E8%A7%A3/index.html">
+<meta property="og:site_name" content="wxing">
+<meta property="og:description" content="跳跃表的主要特点包括 有序性：跳跃表中的元素是有序的，可以快速地进行范围查询。 概率性：跳跃表的高度是随机决定的，这使得它在平均情况下具有对数时间复杂度。 动态性：跳跃表可以在运行时动态地添加和删除元素，而不需要重新构建整个结构。 空间效率：相比于平衡树，跳跃表的空间效率更高，因为它不需要存储指向父节点的指针。  在 Redis 中，跳跃表被用于实现有序集合，它允许用户添加、删除、更新和查询元素，">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://nullcc.github.io/assets/images/post_imgs/redis_data_structure_10.png">
+<meta property="article:published_time" content="2024-10-01T05:57:44.000Z">
+<meta property="article:modified_time" content="2024-10-01T05:58:45.140Z">
+<meta property="article:author" content="wxing">
+<meta property="article:tag" content="数据结构与算法">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://nullcc.github.io/assets/images/post_imgs/redis_data_structure_10.png">
+  
+  
+  
+  <title>Redis中跳跃表的实现及理解 - wxing</title>
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/twitter-bootstrap/4.6.1/css/bootstrap.min.css" />
+
+
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/github-markdown-css/4.0.0/github-markdown.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/hint.css/2.7.0/hint.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.css" />
+
+
+
+<!-- 主题依赖的图标库，不要自行修改 -->
+<!-- Do not modify the link that theme dependent icons -->
+
+<link rel="stylesheet" href="//at.alicdn.com/t/c/font_1749284_5i9bdhy70f8.css">
+
+
+
+<link rel="stylesheet" href="//at.alicdn.com/t/c/font_1736178_k526ubmyhba.css">
+
+
+<link  rel="stylesheet" href="/css/main.css" />
+
+
+  <link id="highlight-css" rel="stylesheet" href="/css/highlight.css" />
+  
+    <link id="highlight-css-dark" rel="stylesheet" href="/css/highlight-dark.css" />
+  
+
+
+
+
+  <script id="fluid-configs">
+    var Fluid = window.Fluid || {};
+    Fluid.ctx = Object.assign({}, Fluid.ctx)
+    var CONFIG = {"hostname":"example.com","root":"/","version":"1.9.8","typing":{"enable":true,"typeSpeed":70,"cursorChar":"_","loop":false,"scope":[]},"anchorjs":{"enable":true,"element":"h1,h2,h3,h4,h5,h6","placement":"left","visible":"hover","icon":""},"progressbar":{"enable":true,"height_px":3,"color":"#29d","options":{"showSpinner":false,"trickleSpeed":100}},"code_language":{"enable":true,"default":"TEXT"},"copy_btn":true,"image_caption":{"enable":true},"image_zoom":{"enable":true,"img_url_replace":["",""]},"toc":{"enable":true,"placement":"right","headingSelector":"h1,h2,h3,h4,h5,h6","collapseDepth":0},"lazyload":{"enable":true,"loading_img":"/img/loading.gif","onlypost":false,"offset_factor":2},"web_analytics":{"enable":false,"follow_dnt":true,"baidu":null,"google":{"measurement_id":null},"tencent":{"sid":null,"cid":null},"leancloud":{"app_id":null,"app_key":null,"server_url":null,"path":"window.location.pathname","ignore_local":false},"umami":{"src":null,"website_id":null,"domains":null,"start_time":"2024-01-01T00:00:00.000Z","token":null,"api_server":null}},"search_path":"/local-search.xml","include_content_in_search":true};
+
+    if (CONFIG.web_analytics.follow_dnt) {
+      var dntVal = navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack;
+      Fluid.ctx.dnt = dntVal && (dntVal.startsWith('1') || dntVal.startsWith('yes') || dntVal.startsWith('on'));
+    }
+  </script>
+  <script  src="/js/utils.js" ></script>
+  <script  src="/js/color-schema.js" ></script>
+  
+
+
+  
+<meta name="generator" content="Hexo 7.3.0"></head>
+
+
+<body>
+  
+
+  <header>
+    
+
+<div class="header-inner" style="height: 70vh;">
+  <nav id="navbar" class="navbar fixed-top  navbar-expand-lg navbar-dark scrolling-navbar">
+  <div class="container">
+    <a class="navbar-brand" href="/">
+      <strong>Running</strong>
+    </a>
+
+    <button id="navbar-toggler-btn" class="navbar-toggler" type="button" data-toggle="collapse"
+            data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <div class="animated-icon"><span></span><span></span><span></span></div>
+    </button>
+
+    <!-- Collapsible content -->
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ml-auto text-center">
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/" target="_self">
+                <i class="iconfont icon-home-fill"></i>
+                <span>Home</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/archives/" target="_self">
+                <i class="iconfont icon-archive-fill"></i>
+                <span>Archives</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/categories/" target="_self">
+                <i class="iconfont icon-category-fill"></i>
+                <span>Categories</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/tags/" target="_self">
+                <i class="iconfont icon-tags-fill"></i>
+                <span>Tags</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/about/" target="_self">
+                <i class="iconfont icon-user-fill"></i>
+                <span>About</span>
+              </a>
+            </li>
+          
+        
+        
+          <li class="nav-item" id="search-btn">
+            <a class="nav-link" target="_self" href="javascript:;" data-toggle="modal" data-target="#modalSearch" aria-label="Search">
+              <i class="iconfont icon-search"></i>
+            </a>
+          </li>
+          
+        
+        
+          <li class="nav-item" id="color-toggle-btn">
+            <a class="nav-link" target="_self" href="javascript:;" aria-label="Color Toggle">
+              <i class="iconfont icon-dark" id="color-toggle-icon"></i>
+            </a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+  
+
+<div id="banner" class="banner" parallax=true
+     style="background: url('/img/f1.png') no-repeat center center; background-size: cover;">
+  <div class="full-bg-img">
+    <div class="mask flex-center" style="background-color: rgba(0, 0, 0, 0.3)">
+      <div class="banner-text text-center fade-in-up">
+        <div class="h2">
+          
+            <span id="subtitle" data-typed-text="Redis中跳跃表的实现及理解"></span>
+          
+        </div>
+
+        
+          
+  <div class="mt-3">
+    
+    
+      <span class="post-meta">
+        <i class="iconfont icon-date-fill" aria-hidden="true"></i>
+        <time datetime="2024-10-01 13:57" pubdate>
+          October 1, 2024 pm
+        </time>
+      </span>
+    
+  </div>
+
+  <div class="mt-1">
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-chart"></i>
+        
+          3.2k words
+        
+      </span>
+    
+
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-clock-fill"></i>
+        
+        
+        
+          28 mins
+        
+      </span>
+    
+
+    
+    
+  </div>
+
+
+        
+      </div>
+
+      
+    </div>
+  </div>
+</div>
+
+</div>
+
+  </header>
+
+  <main>
+    
+      
+
+<div class="container-fluid nopadding-x">
+  <div class="row nomargin-x">
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+
+    </div>
+
+    <div class="col-lg-8 nopadding-x-md">
+      <div class="container nopadding-x-md" id="board-ctn">
+        <div id="board">
+          <article class="post-content mx-auto">
+            <h1 id="seo-header">Redis中跳跃表的实现及理解</h1>
+            
+            
+              <div class="markdown-body">
+                
+                <h1 id="跳跃表的主要特点包括"><a href="#跳跃表的主要特点包括" class="headerlink" title="跳跃表的主要特点包括"></a>跳跃表的主要特点包括</h1><ul>
+<li>有序性：跳跃表中的元素是有序的，可以快速地进行范围查询。</li>
+<li>概率性：跳跃表的高度是随机决定的，这使得它在平均情况下具有对数时间复杂度。</li>
+<li>动态性：跳跃表可以在运行时动态地添加和删除元素，而不需要重新构建整个结构。</li>
+<li>空间效率：相比于平衡树，跳跃表的空间效率更高，因为它不需要存储指向父节点的指针。</li>
+</ul>
+<p>在 Redis 中，跳跃表被用于实现有序集合，它允许用户添加、删除、更新和查询元素，并且可以按照分数对元素进行排序。</p>
+<p><img src="https://nullcc.github.io/assets/images/post_imgs/redis_data_structure_10.png" srcset="/img/loading.gif" lazyload alt="Redis的zskiplist" title="Redis的zskiplist"></p>
+<p><strong>数据结构定义：</strong><br>Redis 中的跳跃表由 zskiplistNode 和 zskiplist 两个结构体定义。zskiplistNode 表示跳跃表的节点，包含成员对象 obj、分值 score、后退指针 backward 以及层 level 信息；zskiplist 表示跳跃表本身，包含头尾节点指针、长度和层高信息。</p>
+<p><strong>节点层级：</strong><br>跳跃表的每个节点可以有多个层，称为索引层，每个索引层包含一个前向指针 forward 和跨度 span。层高是随机生成的，遵循幂次定律，最大层高为 32。</p>
+<p><strong>创建跳跃表：</strong><br>使用 zslCreate 函数创建一个新的跳跃表，初始化层高为 1，长度为 0，并创建头节点，头节点的层高为 32，其余节点的层高根据需要动态生成。</p>
+<p><strong>插入节点：</strong><br>插入操作首先确定新节点的层高，然后从高层向低层搜索插入位置，并更新 update 数组，该数组记录所有需要调整的前置节点。接着，创建新节点，并根据 update 数组和 rank 数组更新跨度和前向指针。</p>
+<p><strong>查找操作：</strong><br>查找操作从高层开始，沿着链表前进；遇到大于目标值的节点时下降到下一层，继续查找。经过的所有节点的跨度之和即为目标节点的排位（rank）。</p>
+<p><strong>删除节点：</strong><br>删除操作根据分值和对象找到待删除节点，并更新相关节点的前向指针和跨度。如果节点在多层中存在，需要逐层删除。</p>
+<p><strong>性能分析：</strong><br>跳跃表支持平均 O(logN)、最坏 O(N) 复杂度的节点查找，且实现比平衡树简单。在有序集合中，跳跃表可以处理元素数量较多或元素成员较长的情况。</p>
+<p><strong>Redis 应用场景：</strong><br>Redis 使用跳跃表实现有序集合键，特别是当集合中的元素数量较多或元素的成员是较长的字符串时。跳跃表也用于 Redis 集群节点中的内部数据结构。</p>
+<p><strong>跳跃表的优点：</strong><br>跳跃表的优点包括支持快速的查找操作，以及在实现上相对简单。它通过维护多个层级的链表来提高查找效率，且可以顺序性地批量处理节点。</p>
+<p><strong>跳跃表的实现细节：</strong><br>跳跃表的实现细节包括节点的创建、插入、删除、搜索等操作，以及维护跳跃表的最大层高和节点数量等信息。具体实现可以参考 Redis 源码中的server.h和t_zset.c 文件。</p>
+<p>基本数据结构：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><code class="hljs c"><span class="hljs-keyword">typedef</span> <span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">zskiplist</span> &#123;</span> <span class="hljs-comment">//跳表的元数据信息</span><br>    <span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">zskiplistNode</span> *<span class="hljs-title">header</span>, *<span class="hljs-title">tail</span>;</span> <span class="hljs-comment">//头指针和尾指针</span><br>    <span class="hljs-type">unsigned</span> <span class="hljs-type">long</span> length; <span class="hljs-comment">//跳表的长度,即除头节点之外的节点总数</span><br>    <span class="hljs-type">int</span> level; <span class="hljs-comment">//层高,即除头节点之外的节点层高的最大值</span><br>&#125; zskiplist;<br><br><span class="hljs-keyword">typedef</span> <span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">zskiplistNode</span> &#123;</span> <span class="hljs-comment">//跳表的节点</span><br>    sds ele; <span class="hljs-comment">//有序集合中成员的名字</span><br>    <span class="hljs-type">double</span> score; <span class="hljs-comment">//有序集合中成员的分值</span><br>    <span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">zskiplistNode</span> *<span class="hljs-title">backward</span>;</span> <span class="hljs-comment">//后退指针</span><br>    <span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">zskiplistLevel</span> &#123;</span><br>        <span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">zskiplistNode</span> *<span class="hljs-title">forward</span>;</span> <span class="hljs-comment">//指向下一个节点的指针</span><br>        <span class="hljs-type">unsigned</span> <span class="hljs-type">long</span> span; <span class="hljs-comment">//跨度,或者说叫距离,跨过3个节点span是4</span><br>    &#125; level[]; <span class="hljs-comment">//节点中层这个概念通过柔性数组实现,每一层是数组中的一个元素</span><br>&#125; zskiplistNode;<br><br><span class="hljs-type">int</span> <span class="hljs-title function_">zslRandomLevel</span><span class="hljs-params">(<span class="hljs-type">void</span>)</span> &#123;<br>    <span class="hljs-type">int</span> level = <span class="hljs-number">1</span>;<br>    <span class="hljs-keyword">while</span> ((random()&amp;<span class="hljs-number">0xFFFF</span>) &lt; (ZSKIPLIST_P * <span class="hljs-number">0xFFFF</span>))<br>        level += <span class="hljs-number">1</span>;<br>    <span class="hljs-keyword">return</span> (level&lt;ZSKIPLIST_MAXLEVEL) ? level : ZSKIPLIST_MAXLEVEL;<br>&#125;<br></code></pre></td></tr></table></figure>
+
+<p>主要操作：</p>
+<p>创建节点和跳表：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br></pre></td><td class="code"><pre><code class="hljs c"><span class="hljs-comment">//创建跳表</span><br>zskiplist *<span class="hljs-title function_">zslCreate</span><span class="hljs-params">(<span class="hljs-type">void</span>)</span> &#123;<br>    <span class="hljs-type">int</span> j;<br>    <span class="hljs-comment">//声明跳表元数据节点</span><br>    zskiplist *zsl;<br>    <br>    <span class="hljs-comment">//为了存储元数据的节点分配内存</span><br>    zsl = zmalloc(<span class="hljs-keyword">sizeof</span>(*zsl));<br>    zsl-&gt;level = <span class="hljs-number">1</span>;<br>    zsl-&gt;length = <span class="hljs-number">0</span>;<br>    <span class="hljs-comment">//创建zsl的头节点指针指向刚创建的跳表头节点,层数为32层,分数为0,不存储数据</span><br>    zsl-&gt;header = zzslCreateNode(ZSKIPLIST_MAXLEVEL,<span class="hljs-number">0</span>,<span class="hljs-literal">NULL</span>);<br>    <span class="hljs-comment">//从0到63初始化头节点每一层的前进指针为空且跨度为0</span><br>    <span class="hljs-keyword">for</span> (j = <span class="hljs-number">0</span>; j &lt; ZSKIPLIST_MAXLEVEL; j++) &#123;<br>        zsl-&gt;header-&gt;level[j].forward = <span class="hljs-literal">NULL</span>;<br>        zsl-&gt;header-&gt;level[j].span = <span class="hljs-number">0</span>;<br>    &#125;<br>    <span class="hljs-comment">//设置头节点的后退指针为空</span><br>    zsl-&gt;header-&gt;backward = <span class="hljs-literal">NULL</span>;<br>    <span class="hljs-comment">//设置跳表的尾节点为空,因为现在还没有节点,只有一个头节点</span><br>    zsl-&gt;tail = <span class="hljs-literal">NULL</span>;<br>    <span class="hljs-keyword">return</span> zsl;<br>&#125;<br><br><span class="hljs-comment">//创建跳表节点</span><br>zskiplistNode *<span class="hljs-title function_">zslCreateNode</span><span class="hljs-params">(<span class="hljs-type">int</span> level, <span class="hljs-type">double</span> score, sds ele)</span> &#123;<br>    <span class="hljs-comment">//为跳表节点声明空间,大小为zskiplistNode加上用来描述层级的level数组的大小</span><br>    zskiplistNode *zn =<br>        zmalloc(<span class="hljs-keyword">sizeof</span>(*zn)+level*<span class="hljs-keyword">sizeof</span>(<span class="hljs-keyword">struct</span> zskiplistLevel));<br>    <span class="hljs-comment">//设置分数和数据</span><br>    zn-&gt;score = score;<br>    zn-&gt;ele = ele;<br>    <span class="hljs-keyword">return</span> zn;<br>&#125;<br></code></pre></td></tr></table></figure>
+
+<p>插入节点：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br></pre></td><td class="code"><pre><code class="hljs c"><span class="hljs-meta">#<span class="hljs-keyword">define</span> ZSKIPLIST_P 0.25</span><br><span class="hljs-meta">#<span class="hljs-keyword">define</span> ZSKIPLIST_MAXLEVEL 32</span><br><br><span class="hljs-type">int</span> <span class="hljs-title function_">zslRandomLevel</span><span class="hljs-params">(<span class="hljs-type">void</span>)</span> &#123;<br>    <span class="hljs-type">int</span> level = <span class="hljs-number">1</span>;<br>    <span class="hljs-comment">//左边是随机生成一个值,取低16位,相当于从1到65535这种取值,右边是0.25乘以65535,所以就是有四分之一的几率进到循环里面让层高加1</span><br>    <span class="hljs-keyword">while</span> ((random()&amp;<span class="hljs-number">0xFFFF</span>) &lt; (ZSKIPLIST_P * <span class="hljs-number">0xFFFF</span>))<br>        level += <span class="hljs-number">1</span>;<br>    <span class="hljs-comment">//如果层高大于等于32了,就用32,反之用随机加出来的值</span><br>    <span class="hljs-keyword">return</span> (level&lt;ZSKIPLIST_MAXLEVEL) ? level : ZSKIPLIST_MAXLEVEL;<br>&#125;<br><br><br><br><span class="hljs-comment">/* Insert a new node in the skiplist. Assumes the element does not already</span><br><span class="hljs-comment"> * exist (up to the caller to enforce that). The skiplist takes ownership</span><br><span class="hljs-comment"> * of the passed SDS string &#x27;ele&#x27;. */</span><br>zskiplistNode *<span class="hljs-title function_">zslInsert</span><span class="hljs-params">(zskiplist *zsl, <span class="hljs-type">double</span> score, sds ele)</span> &#123;<br>    <span class="hljs-comment">//update数组存储的是每一层中要被插入位置的前一个节点</span><br>    zskiplistNode *update[ZSKIPLIST_MAXLEVEL], *x;<br>    <span class="hljs-comment">//rank数组存储的是update节点在所有节点中的排名,计算方式是跨度的累加</span><br>    <span class="hljs-type">unsigned</span> <span class="hljs-type">int</span> rank[ZSKIPLIST_MAXLEVEL];<br>    <span class="hljs-type">int</span> i, level;<br><br>    serverAssert(!isnan(score));<br>    <br>    <span class="hljs-comment">//x指向头节点</span><br>    x = zsl-&gt;header;<br>    <span class="hljs-comment">//从跳表当前最高层开始,数组从0开始而level从1开始所以这里减个1</span><br>    <span class="hljs-keyword">for</span> (i = zsl-&gt;level<span class="hljs-number">-1</span>; i &gt;= <span class="hljs-number">0</span>; i--) &#123;<br>        <span class="hljs-comment">//如果当前是最高层则rank[i]为0否则等于上一层的rank值</span><br>        rank[i] = i == (zsl-&gt;level<span class="hljs-number">-1</span>) ? <span class="hljs-number">0</span> : rank[i+<span class="hljs-number">1</span>];<br>        <span class="hljs-comment">//如果当前层当前节点的下一个节点不为空且下一个节点的分值比要插入的节点小,如果分值相同使用sdscmp对字典序进行比较</span><br>        <span class="hljs-keyword">while</span> (x-&gt;level[i].forward &amp;&amp;<br>                (x-&gt;level[i].forward-&gt;score &lt; score ||<br>                    (x-&gt;level[i].forward-&gt;score == score &amp;&amp;<br>                    sdscmp(x-&gt;level[i].forward-&gt;ele,ele) &lt; <span class="hljs-number">0</span>)))<br>        &#123;<br>            <span class="hljs-comment">//rank需要加上当前节点的跨度</span><br>            rank[i] += x-&gt;level[i].span;<br>            <span class="hljs-comment">//向前走一步</span><br>            x = x-&gt;level[i].forward;<br>        &#125;<br>        <span class="hljs-comment">//update对应的是要插入位置的前一个节点</span><br>        update[i] = x;<br>    &#125;<br>    <span class="hljs-comment">//生成该节点的层数</span><br>    level = zslRandomLevel();<br>    <span class="hljs-comment">//如果生成的高度比当前跳表的高度高</span><br>    <span class="hljs-keyword">if</span> (level &gt; zsl-&gt;level) &#123;<br>        <span class="hljs-comment">//从当前最高层的上一层开始,一直处理到到新生成的高度</span><br>        <span class="hljs-keyword">for</span> (i = zsl-&gt;level; i &lt; level; i++) &#123;<br>            <span class="hljs-comment">//因为要比其他所有节点的层都要高,所以当前层从当前位置到头节点之间没有其他节点,此时rank[i]的值为头节点到头节点的距离,所以是0.由于update数组代表插入位置的前一个节点,,所以update[i]为头节点且跨度为跳表长度</span><br>            rank[i] = <span class="hljs-number">0</span>;<br>            update[i] = zsl-&gt;header;<br>            update[i]-&gt;level[i].span = zsl-&gt;length;<br>        &#125;<br>        <span class="hljs-comment">//更新跳表高度</span><br>        zsl-&gt;level = level;<br>    &#125;<br>    <span class="hljs-comment">//将x指向新建的节点</span><br>    x = zslCreateNode(level,score,ele);<br>    <span class="hljs-comment">//遍历当前所有的层</span><br>    <span class="hljs-keyword">for</span> (i = <span class="hljs-number">0</span>; i &lt; level; i++) &#123;<br>        <span class="hljs-comment">//更新要插入节点的每一层的前进指针为插入节点前一个节点的前进指针</span><br>        x-&gt;level[i].forward = update[i]-&gt;level[i].forward;<br>        <span class="hljs-comment">//更新要插入节点的前一个节点每一层的前进指针指向新建节点</span><br>        update[i]-&gt;level[i].forward = x;<br>        <br>        <span class="hljs-comment">//这两句更新跨度的抽出去在下面单独说</span><br>        x-&gt;level[i].span = update[i]-&gt;level[i].span - (rank[<span class="hljs-number">0</span>] - rank[i]);<br>        update[i]-&gt;level[i].span = (rank[<span class="hljs-number">0</span>] - rank[i]) + <span class="hljs-number">1</span>;<br>    &#125;<br>    <span class="hljs-comment">//如果新建的节点层级比前一个节点矮的话,那么需要把前一个节点高出部分层级的跨度都加一,因为相当于多跨了一个节点</span><br>    <span class="hljs-keyword">for</span> (i = level; i &lt; zsl-&gt;level; i++) &#123;<br>        update[i]-&gt;level[i].span++;<br>    &#125;<br>    <br>    x-&gt;backward = (update[<span class="hljs-number">0</span>] == zsl-&gt;header) ? <span class="hljs-literal">NULL</span> : update[<span class="hljs-number">0</span>];<br>    <span class="hljs-comment">//如果插入节点最底层指针的前进指针不为空,说明当前节点不是被插入了跳表尾部</span><br>    <span class="hljs-keyword">if</span> (x-&gt;level[<span class="hljs-number">0</span>].forward)<br>        x-&gt;level[<span class="hljs-number">0</span>].forward-&gt;backward = x;<br>    <span class="hljs-keyword">else</span><br>        <span class="hljs-comment">//否则把跳表尾节点的指针更新为x</span><br>        zsl-&gt;tail = x;<br>    <span class="hljs-comment">//插入完成后把跳表的长度加1</span><br>    zsl-&gt;length++;<br>    <span class="hljs-comment">//返回被插入的节点</span><br>    <span class="hljs-keyword">return</span> x;<br>&#125;<br></code></pre></td></tr></table></figure>
+
+<p>查找节点：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br></pre></td><td class="code"><pre><code class="hljs c"><span class="hljs-comment">/* Find the rank for an element by both score and key.</span><br><span class="hljs-comment"> * Returns 0 when the element cannot be found, rank otherwise.</span><br><span class="hljs-comment"> * Note that the rank is 1-based due to the span of zsl-&gt;header to the</span><br><span class="hljs-comment"> * first element. */</span><br><span class="hljs-type">unsigned</span> <span class="hljs-type">long</span> <span class="hljs-title function_">zslGetRank</span><span class="hljs-params">(zskiplist *zsl, <span class="hljs-type">double</span> score, sds ele)</span> &#123;<br>    zskiplistNode *x;<br>    <span class="hljs-type">unsigned</span> <span class="hljs-type">long</span> rank = <span class="hljs-number">0</span>;<br>    <span class="hljs-type">int</span> i;<br>    <br>    <span class="hljs-comment">//把x指向头节点</span><br>    x = zsl-&gt;header;<br>    <span class="hljs-comment">//从最高层开始遍历</span><br>    <span class="hljs-keyword">for</span> (i = zsl-&gt;level<span class="hljs-number">-1</span>; i &gt;= <span class="hljs-number">0</span>; i--) &#123;<br>        <span class="hljs-comment">//如果下一个节点不为空且下一个节点分数比当前节点小或者分数相等但是小于等于下一个元素的字典序</span><br>        <span class="hljs-keyword">while</span> (x-&gt;level[i].forward &amp;&amp;<br>            (x-&gt;level[i].forward-&gt;score &lt; score ||<br>                (x-&gt;level[i].forward-&gt;score == score &amp;&amp;<br>                sdscmp(x-&gt;level[i].forward-&gt;ele,ele) &lt;= <span class="hljs-number">0</span>))) &#123;<br>            <span class="hljs-comment">//利用span更新排名</span><br>            rank += x-&gt;level[i].span;<br>            <span class="hljs-comment">//指向下一个同层元素</span><br>            x = x-&gt;level[i].forward;<br>        &#125;<br><br>        <span class="hljs-comment">/* x might be equal to zsl-&gt;header, so test if obj is non-NULL */</span><br>        <span class="hljs-comment">//因为有可能跳表里没有元素,所以这里最后的x可能是头节点,于是这里判了一下空防止是头节点,并且元素相等的话就返回计算好的排名</span><br>        <span class="hljs-keyword">if</span> (x-&gt;ele &amp;&amp; sdscmp(x-&gt;ele,ele) == <span class="hljs-number">0</span>) &#123;<br>            <span class="hljs-keyword">return</span> rank;<br>        &#125;<br>    &#125;<br>    <span class="hljs-comment">//能走到这的话说明元素不存在,返回0</span><br>    <span class="hljs-keyword">return</span> <span class="hljs-number">0</span>;<br>&#125;<br><br><br><span class="hljs-comment">/* Finds an element by its rank. The rank argument needs to be 1-based. */</span><br>zskiplistNode* <span class="hljs-title function_">zslGetElementByRank</span><span class="hljs-params">(zskiplist *zsl, <span class="hljs-type">unsigned</span> <span class="hljs-type">long</span> rank)</span> &#123;<br>    zskiplistNode *x;<br>    <span class="hljs-type">unsigned</span> <span class="hljs-type">long</span> traversed = <span class="hljs-number">0</span>;<br>    <span class="hljs-type">int</span> i;<br><br>    x = zsl-&gt;header;<br>    <span class="hljs-keyword">for</span> (i = zsl-&gt;level<span class="hljs-number">-1</span>; i &gt;= <span class="hljs-number">0</span>; i--) &#123;<br>        <span class="hljs-keyword">while</span> (x-&gt;level[i].forward &amp;&amp; (traversed + x-&gt;level[i].span) &lt;= rank)<br>        &#123;<br>            traversed += x-&gt;level[i].span;<br>            x = x-&gt;level[i].forward;<br>        &#125;<br>        <span class="hljs-keyword">if</span> (traversed == rank) &#123;<br>            <span class="hljs-keyword">return</span> x;<br>        &#125;<br>    &#125;<br>    <span class="hljs-keyword">return</span> <span class="hljs-literal">NULL</span>;<br>&#125;<br></code></pre></td></tr></table></figure>
+
+<p>删除节点：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br></pre></td><td class="code"><pre><code class="hljs c"><span class="hljs-type">int</span> <span class="hljs-title function_">zslDelete</span><span class="hljs-params">(zskiplist *zsl, <span class="hljs-type">double</span> score, sds ele, zskiplistNode **node)</span> &#123;<br>    <span class="hljs-comment">//删除也需要记录前一个节点</span><br>    zskiplistNode *update[ZSKIPLIST_MAXLEVEL], *x;<br>    <span class="hljs-type">int</span> i;<br>    <br>    <span class="hljs-comment">//x指向头节点</span><br>    x = zsl-&gt;header;<br>    <span class="hljs-comment">//从最高层开始遍历</span><br>    <span class="hljs-keyword">for</span> (i = zsl-&gt;level<span class="hljs-number">-1</span>; i &gt;= <span class="hljs-number">0</span>; i--) &#123;<br>        <span class="hljs-comment">//循环方式和插入一样,直到找到要删除节点的前一个节点,然后用update存下来</span><br>        <span class="hljs-keyword">while</span> (x-&gt;level[i].forward &amp;&amp;<br>                (x-&gt;level[i].forward-&gt;score &lt; score ||<br>                    (x-&gt;level[i].forward-&gt;score == score &amp;&amp;<br>                     sdscmp(x-&gt;level[i].forward-&gt;ele,ele) &lt; <span class="hljs-number">0</span>)))<br>        &#123;<br>            x = x-&gt;level[i].forward;<br>        &#125;<br>        update[i] = x;<br>    &#125;<br>    <br>    <span class="hljs-comment">//x现在指向的是最下面一层的update节点,这里往前走了一步也就是变成了插入节点的最下面一层</span><br>    x = x-&gt;level[<span class="hljs-number">0</span>].forward;<br>    <span class="hljs-comment">//如果插入节点最下面一层存在并且分数能对得上并且元素值也能对得上</span><br>    <span class="hljs-keyword">if</span> (x &amp;&amp; score == x-&gt;score &amp;&amp; sdscmp(x-&gt;ele,ele) == <span class="hljs-number">0</span>) &#123;<br>        <span class="hljs-comment">//调用zslDeleteNode删除这个节点</span><br>        zslDeleteNode(zsl, x, update);<br>        <span class="hljs-keyword">if</span> (!node)<br>            zslFreeNode(x);<br>        <span class="hljs-keyword">else</span><br>            *node = x;<br>        <span class="hljs-keyword">return</span> <span class="hljs-number">1</span>;<br>    &#125;<br>    <span class="hljs-keyword">return</span> <span class="hljs-number">0</span>;<br>&#125;<br><br><span class="hljs-comment">//实际删除节点的方法</span><br><span class="hljs-type">void</span> <span class="hljs-title function_">zslDeleteNode</span><span class="hljs-params">(zskiplist *zsl, zskiplistNode *x, zskiplistNode **update)</span> &#123;<br>    <span class="hljs-type">int</span> i;<br>    <span class="hljs-comment">//从最下面一层到最上面一层开始遍历</span><br>    <span class="hljs-keyword">for</span> (i = <span class="hljs-number">0</span>; i &lt; zsl-&gt;level; i++) &#123;<br>        <span class="hljs-comment">//如果要删除节点的前一个节点的前进指针是要删除节点的话</span><br>        <span class="hljs-keyword">if</span> (update[i]-&gt;level[i].forward == x) &#123;<br>            <span class="hljs-comment">//前一个节点的span需要加上被删除节点的span再加1</span><br>            update[i]-&gt;level[i].span += x-&gt;level[i].span - <span class="hljs-number">1</span>;<br>            <span class="hljs-comment">//把前一个节点的前进指针设置成要删除节点的前进指针</span><br>            update[i]-&gt;level[i].forward = x-&gt;level[i].forward;<br>        &#125; <span class="hljs-keyword">else</span> &#123;<br>            <span class="hljs-comment">//走到else说明update的层高比插入节点高,且现在正在处理高出的那部分层,这时候直接把span减1即可</span><br>            update[i]-&gt;level[i].span -= <span class="hljs-number">1</span>;<br>        &#125;<br>    &#125;<br>    <span class="hljs-comment">//如果被删除节点的前进指针存在的话</span><br>    <span class="hljs-keyword">if</span> (x-&gt;level[<span class="hljs-number">0</span>].forward) &#123;<br>        <span class="hljs-comment">//设置被删除节点的下一个节点的后退指针指向被删除节点的前一个节点</span><br>        x-&gt;level[<span class="hljs-number">0</span>].forward-&gt;backward = x-&gt;backward;<br>    &#125; <span class="hljs-keyword">else</span> &#123;<br>        <span class="hljs-comment">//不存在的话说明被删除节点是尾节点,需要更新跳表的尾节点为被删除节点的前一个节点</span><br>        zsl-&gt;tail = x-&gt;backward;<br>    &#125;<br>    <span class="hljs-comment">//因为删除掉的节点可能是层高最高的节点,所以需要调整层高,这里的做法是从当最高层开始遍历,如果发现头节点之后直接是空,说明这一层是空,这时候需要把层高减1</span><br>    <span class="hljs-keyword">while</span>(zsl-&gt;level &gt; <span class="hljs-number">1</span> &amp;&amp; zsl-&gt;header-&gt;level[zsl-&gt;level<span class="hljs-number">-1</span>].forward == <span class="hljs-literal">NULL</span>)<br>        zsl-&gt;level--;<br>    <span class="hljs-comment">//跳表的长度减1</span><br>    zsl-&gt;length--;<br>&#125;<br><br><span class="hljs-comment">// 删除跳表</span><br><span class="hljs-type">void</span> <span class="hljs-title function_">zslFree</span><span class="hljs-params">(zskiplist *zsl)</span> &#123;<br>    <span class="hljs-comment">//获取头节点最下面一层的指针</span><br>    zskiplistNode *node = zsl-&gt;header-&gt;level[<span class="hljs-number">0</span>].forward, *next;<br>    <span class="hljs-comment">//释放头节点</span><br>    zfree(zsl-&gt;header);<br>    <span class="hljs-comment">//从第一个节点开始,向后往后一个一个释放内存</span><br>    <span class="hljs-keyword">while</span>(node) &#123;<br>        next = node-&gt;level[<span class="hljs-number">0</span>].forward;<br>        zslFreeNode(node);<br>        node = next;<br>    &#125;<br>    zfree(zsl);<br>&#125;<br></code></pre></td></tr></table></figure>
+
+                
+              </div>
+            
+            <hr/>
+            <div>
+              <div class="post-metas my-3">
+  
+    <div class="post-meta mr-3 d-flex align-items-center">
+      <i class="iconfont icon-category"></i>
+      
+
+<span class="category-chains">
+  
+  
+    
+      <span class="category-chain">
+        
+  <a href="/categories/C/" class="category-chain-item">C++</a>
+  
+  
+
+      </span>
+    
+  
+</span>
+
+    </div>
+  
+  
+    <div class="post-meta">
+      <i class="iconfont icon-tags"></i>
+      
+        <a href="/tags/%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E4%B8%8E%E7%AE%97%E6%B3%95/" class="print-no-link">#数据结构与算法</a>
+      
+    </div>
+  
+</div>
+
+
+              
+  
+
+  <div class="license-box my-3">
+    <div class="license-title">
+      <div>Redis中跳跃表的实现及理解</div>
+      <div>http://example.com/2024/10/01/Redis中跳跃表的实现及理解/</div>
+    </div>
+    <div class="license-meta">
+      
+        <div class="license-meta-item">
+          <div>Author</div>
+          <div>wxing</div>
+        </div>
+      
+      
+        <div class="license-meta-item license-meta-date">
+          <div>Posted on</div>
+          <div>October 1, 2024</div>
+        </div>
+      
+      
+      
+        <div class="license-meta-item">
+          <div>Licensed under</div>
+          <div>
+            
+              
+              
+                <a class="print-no-link" target="_blank" href="https://creativecommons.org/licenses/by/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="BY - Attribution">
+                    <i class="iconfont icon-cc-by"></i>
+                  </span>
+                </a>
+              
+            
+          </div>
+        </div>
+      
+    </div>
+    <div class="license-icon iconfont"></div>
+  </div>
+
+
+
+              
+                <div class="post-prevnext my-3">
+                  <article class="post-prev col-6">
+                    
+                    
+                  </article>
+                  <article class="post-next col-6">
+                    
+                    
+                      <a href="/2024/10/01/LevelDB%E4%B8%AD%E8%B7%B3%E8%B7%83%E8%A1%A8%E7%9A%84%E5%AE%9E%E7%8E%B0%E5%8F%8A%E7%90%86%E8%A7%A3/" title="LevelDB中跳跃表的实现及理解">
+                        <span class="hidden-mobile">LevelDB中跳跃表的实现及理解</span>
+                        <span class="visible-mobile">Next</span>
+                        <i class="iconfont icon-arrowright"></i>
+                      </a>
+                    
+                  </article>
+                </div>
+              
+            </div>
+
+            
+          </article>
+        </div>
+      </div>
+    </div>
+
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+  <aside class="sidebar" style="margin-left: -1rem">
+    <div id="toc">
+  <p class="toc-header">
+    <i class="iconfont icon-list"></i>
+    <span>Table of Contents</span>
+  </p>
+  <div class="toc-body" id="toc-body"></div>
+</div>
+
+
+
+  </aside>
+
+
+    </div>
+  </div>
+</div>
+
+
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+
+
+
+
+    
+
+    
+      <a id="scroll-top-button" aria-label="TOP" href="#" role="button">
+        <i class="iconfont icon-arrowup" aria-hidden="true"></i>
+      </a>
+    
+
+    
+      <div class="modal fade" id="modalSearch" tabindex="-1" role="dialog" aria-labelledby="ModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header text-center">
+        <h4 class="modal-title w-100 font-weight-bold">Search</h4>
+        <button type="button" id="local-search-close" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body mx-3">
+        <div class="md-form mb-5">
+          <input type="text" id="local-search-input" class="form-control validate">
+          <label data-error="x" data-success="v" for="local-search-input">Keyword</label>
+        </div>
+        <div class="list-group" id="local-search-result"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    
+
+    
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+  
+    <div class="footer-content">
+       <a href="https://hexo.io" target="_blank" rel="nofollow noopener"><span>Hexo</span></a> <i class="iconfont icon-love"></i> <a href="https://github.com/fluid-dev/hexo-theme-fluid" target="_blank" rel="nofollow noopener"><span>Fluid</span></a> 
+    </div>
+  
+  
+  
+</div>
+
+  </footer>
+
+  <!-- Scripts -->
+  
+  <script  src="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.js" ></script>
+  <link  rel="stylesheet" href="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.css" />
+
+  <script>
+    NProgress.configure({"showSpinner":false,"trickleSpeed":100})
+    NProgress.start()
+    window.addEventListener('load', function() {
+      NProgress.done();
+    })
+  </script>
+
+
+<script  src="https://lib.baomitu.com/jquery/3.6.4/jquery.min.js" ></script>
+<script  src="https://lib.baomitu.com/twitter-bootstrap/4.6.1/js/bootstrap.min.js" ></script>
+<script  src="/js/events.js" ></script>
+<script  src="/js/plugins.js" ></script>
+
+
+  <script  src="https://lib.baomitu.com/typed.js/2.0.12/typed.min.js" ></script>
+  <script>
+    (function (window, document) {
+      var typing = Fluid.plugins.typing;
+      var subtitle = document.getElementById('subtitle');
+      if (!subtitle || !typing) {
+        return;
+      }
+      var text = subtitle.getAttribute('data-typed-text');
+      
+        typing(text);
+      
+    })(window, document);
+  </script>
+
+
+
+
+  
+    <script  src="/js/img-lazyload.js" ></script>
+  
+
+
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/tocbot/4.20.1/tocbot.min.js', function() {
+    var toc = jQuery('#toc');
+    if (toc.length === 0 || !window.tocbot) { return; }
+    var boardCtn = jQuery('#board-ctn');
+    var boardTop = boardCtn.offset().top;
+
+    window.tocbot.init(Object.assign({
+      tocSelector     : '#toc-body',
+      contentSelector : '.markdown-body',
+      linkClass       : 'tocbot-link',
+      activeLinkClass : 'tocbot-active-link',
+      listClass       : 'tocbot-list',
+      isCollapsedClass: 'tocbot-is-collapsed',
+      collapsibleClass: 'tocbot-is-collapsible',
+      scrollSmooth    : true,
+      includeTitleTags: true,
+      headingsOffset  : -boardTop,
+    }, CONFIG.toc));
+    if (toc.find('.toc-list-item').length > 0) {
+      toc.css('visibility', 'visible');
+    }
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('tocbot' in window) {
+        tocbot.refresh();
+        var toc = jQuery('#toc');
+        if (toc.length === 0 || !tocbot) {
+          return;
+        }
+        if (toc.find('.toc-list-item').length > 0) {
+          toc.css('visibility', 'visible');
+        }
+      }
+    });
+  });
+</script>
+
+
+  <script src=https://lib.baomitu.com/clipboard.js/2.0.11/clipboard.min.js></script>
+
+  <script>Fluid.plugins.codeWidget();</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/anchor-js/5.0.0/anchor.min.js', function() {
+    window.anchors.options = {
+      placement: CONFIG.anchorjs.placement,
+      visible  : CONFIG.anchorjs.visible
+    };
+    if (CONFIG.anchorjs.icon) {
+      window.anchors.options.icon = CONFIG.anchorjs.icon;
+    }
+    var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+    var res = [];
+    for (var item of el) {
+      res.push('.markdown-body > ' + item.trim());
+    }
+    if (CONFIG.anchorjs.placement === 'left') {
+      window.anchors.options.class = 'anchorjs-link-left';
+    }
+    window.anchors.add(res.join(', '));
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('anchors' in window) {
+        anchors.removeAll();
+        var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+        var res = [];
+        for (var item of el) {
+          res.push('.markdown-body > ' + item.trim());
+        }
+        if (CONFIG.anchorjs.placement === 'left') {
+          anchors.options.class = 'anchorjs-link-left';
+        }
+        anchors.add(res.join(', '));
+      }
+    });
+  });
+</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.js', function() {
+    Fluid.plugins.fancyBox();
+  });
+</script>
+
+
+  <script>Fluid.plugins.imageCaption();</script>
+
+  <script  src="/js/local-search.js" ></script>
+
+
+
+
+
+<!-- 主题的启动项，将它保持在最底部 -->
+<!-- the boot of the theme, keep it at the bottom -->
+<script  src="/js/boot.js" ></script>
+
+
+  
+
+  <noscript>
+    <div class="noscript-warning">Blog works best with JavaScript enabled</div>
+  </noscript>
+</body>
+</html>
